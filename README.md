@@ -1,7 +1,18 @@
 # Group-Project-CCCU
-Hello, y'all
-Hello all im issa kamara ready for the group work
+Hello everyone,
+
 There is now a document with ideas if you all want to tune in on that one in OneDrive shared folder Group Project CCCU!
+
+The roles for the project:
+
++ Will: Designer
+
++ Ilia: Back end
+
++ Fahad: User Interface
+
++ Issa: Leader / Database
+
 
 Good news everone one of the first functioning prototypes is out
 
