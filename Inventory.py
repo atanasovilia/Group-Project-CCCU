@@ -47,7 +47,7 @@ def init_db():
                       type TEXT,
                       timestamp TEXT,
                       FOREIGN KEY (product_id) REFERENCES products(id))''')
-        # Add default user if none exists
+        # Add default user if none exists(user = admin, pass = admin)
         c.execute('SELECT COUNT(*) FROM users')
         if c.fetchone()[0] == 0:
             default_password = sha256_crypt.hash('admin')
@@ -66,7 +66,7 @@ class Bar(Widget):
     def update_bar(self, *args):
         self.canvas.clear()
         with self.canvas:
-            Color(0, 0, 1)  # Blue bars
+            Color(0, 0, 1)  # Blue
             height = (self.value / self.max_value) * self.height if self.max_value > 0 else 0
             Rectangle(pos=(self.x, self.y), size=(self.width, height))
 
@@ -96,24 +96,26 @@ class LoginScreen(Screen):
     """Login screen for user authentication."""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10,)
         layout.add_widget(Label(text='Username'))
-        self.username = TextInput()
+        self.username = TextInput(size_hint=(1, None), height=50)
         layout.add_widget(self.username)
         layout.add_widget(Label(text='Password'))
-        self.password = TextInput(password=True)
+        
+        self.password = TextInput(password=True, size_hint=(1, None), height=50 )
         layout.add_widget(self.password)
-        login_button = Button(text='Login')
+        login_button = Button(text='Login',size_hint=(1, None), height=50)
         login_button.bind(on_press=self.login)
         layout.add_widget(login_button)
         self.add_widget(layout)
+    
 
     def login(self, instance):
         username = self.username.text
         password = self.password.text
         with get_db_connection() as conn:
             user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        if user and sha256_crypt.verify(password, user['password']):
+        if user and sha256_crypt.verify(password, user['password']): #Password encryption
             self.manager.current = 'dashboard'
         else:
             print('Invalid credentials')  #Needs to be replace with popup in production
@@ -138,6 +140,7 @@ class DashboardScreen(Screen):
         layout.add_widget(logout_button)
         self.add_widget(layout)
         
+        
 
 class ProductsScreen(Screen):
     """Screen to manage products (add, edit, delete)."""
@@ -153,6 +156,14 @@ class ProductsScreen(Screen):
         self.scrollview.add_widget(self.grid)
         self.layout.add_widget(self.scrollview)
         self.add_widget(self.layout)
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10,)
+        backButton = Button(text = 'Back', size_hint=(1, None), height=50)
+        self.layout.add_widget(backButton)
+        backButton.bind (on_press = self.go_back)
+    
+    def go_back(self, instance):
+        """Switch back to the Dashboard screen."""
+        self.manager.current = "dashboard"
 
     def on_pre_enter(self, *args):
         self.load_products()
@@ -186,6 +197,7 @@ class ProductsScreen(Screen):
             conn.commit()
         self.load_products()
 
+# The Form for the products (Name, Description, Price per unit)
 class ProductFormScreen(Screen):
     """Screen for adding or editing a product."""
     def __init__(self, **kwargs):
@@ -251,6 +263,7 @@ class InventoryScreen(Screen):
         self.grid.bind(minimum_height=self.grid.setter('height'))
         self.layout.add_widget(self.grid)
         self.add_widget(self.layout)
+        
 
     def on_pre_enter(self, *args):
         self.load_inventory()
@@ -265,7 +278,7 @@ class InventoryScreen(Screen):
             purchase_button = Button(text='Purchase')
             purchase_button.bind(on_press=lambda x, p=item: self.open_transaction_popup(p, 'purchase'))
             item_layout.add_widget(purchase_button)
-            sell_button = Button(text='Remove')
+            sell_button = Button(text='Sold')
             sell_button.bind(on_press=lambda x, p=item: self.open_transaction_popup(p, 'sale'))
             item_layout.add_widget(sell_button)
             self.grid.add_widget(item_layout)
@@ -307,7 +320,7 @@ class InventoryScreen(Screen):
             self.load_inventory()
 
         except ValueError as e:
-            print(f"Invalid quantity: {e}")  # Display appropriate error message in the production page
+            print(f"Invalid quantity: {e}")  # Display appropriate error message in the production page(Needs a pop-up)
 
 class AnalyticsScreen(Screen):
     """Screen to display analytics with graphs and availability."""
@@ -318,7 +331,6 @@ class AnalyticsScreen(Screen):
         self.bar_graph = BarGraph([('Product 1', 10), ('Product 2', 30), ('Product 3', 20)])
         self.layout.add_widget(self.bar_graph)
         self.add_widget(self.layout)
-        
 
 # App and ScreenManager Setup - Not finished
 class MyApp(App):
