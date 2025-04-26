@@ -1,4 +1,5 @@
 import sqlite3
+from kivy.core.window import Window
 from passlib.hash import sha256_crypt
 from datetime import datetime
 from kivy.app import App
@@ -13,18 +14,15 @@ from kivy.uix.popup import Popup
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle
 
-#Back button function 
-#Functionality 
-
-# Database Functions - Needs more backend and frontend work
+# Database Functions
 def get_db_connection():
-    """Establish a connection to the SQLite database."""
+#Connects to database
     conn = sqlite3.connect('inventory.db')
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """Initialize the database with required tables and a default user."""
+#Creates the tables required and the users id 
     with get_db_connection() as conn:
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS users
@@ -47,7 +45,6 @@ def init_db():
                       type TEXT,
                       timestamp TEXT,
                       FOREIGN KEY (product_id) REFERENCES products(id))''')
-        # Add default user if none exists(user = admin, pass = admin)
         c.execute('SELECT COUNT(*) FROM users')
         if c.fetchone()[0] == 0:
             default_password = sha256_crypt.hash('admin')
@@ -56,7 +53,6 @@ def init_db():
 
 # Custom Widgets for Graphs
 class Bar(Widget):
-    """A single bar in the bar graph."""
     def __init__(self, value, max_value, **kwargs):
         super().__init__(**kwargs)
         self.value = value
@@ -71,7 +67,7 @@ class Bar(Widget):
             Rectangle(pos=(self.x, self.y), size=(self.width, height))
 
 class BarGraph(BoxLayout):
-    """A bar graph displaying data as a series of bars."""
+#The bar graph displaying series of tables
     def __init__(self, data, **kwargs):
         super().__init__(orientation='horizontal', **kwargs)
         self.data = data
@@ -91,37 +87,35 @@ class BarGraph(BoxLayout):
             bar_container.add_widget(bar_label)
             self.add_widget(bar_container)
 
-# Screen Definitions
+
 class LoginScreen(Screen):
-    """Login screen for user authentication."""
+#Login authethication and login screen
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10,)
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
         layout.add_widget(Label(text='Username'))
-        self.username = TextInput(size_hint=(1, None), height=50)
+        self.username = TextInput(multiline=False, size_hint=(1, None), height=50)
         layout.add_widget(self.username)
         layout.add_widget(Label(text='Password'))
-        
-        self.password = TextInput(password=True, size_hint=(1, None), height=50 )
+        self.password = TextInput(multiline=False, password=True, size_hint=(1, None), height=50)
         layout.add_widget(self.password)
-        login_button = Button(text='Login',size_hint=(1, None), height=50)
+        login_button = Button(text='Login', size_hint=(1, None), height=50)
         login_button.bind(on_press=self.login)
         layout.add_widget(login_button)
         self.add_widget(layout)
-    
 
     def login(self, instance):
         username = self.username.text
         password = self.password.text
         with get_db_connection() as conn:
             user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        if user and sha256_crypt.verify(password, user['password']): #Password encryption
+        if user and sha256_crypt.verify(password, user['password']):
             self.manager.current = 'dashboard'
         else:
-            print('Invalid credentials')  #Needs to be replace with popup in production
+            print('Invalid credentials')  # Replace with popup in production
 
 class DashboardScreen(Screen):
-    """Dashboard screen with navigation options."""
+#Dashboard scren with navigation options
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
@@ -139,11 +133,9 @@ class DashboardScreen(Screen):
         logout_button.bind(on_press=lambda x: setattr(self.manager, 'current', 'login'))
         layout.add_widget(logout_button)
         self.add_widget(layout)
-        
-        
 
 class ProductsScreen(Screen):
-    """Screen to manage products (add, edit, delete)."""
+#Screen to manage products: add, edit, delete
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
@@ -155,14 +147,13 @@ class ProductsScreen(Screen):
         self.grid.bind(minimum_height=self.grid.setter('height'))
         self.scrollview.add_widget(self.grid)
         self.layout.add_widget(self.scrollview)
-        self.add_widget(self.layout)
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10,)
-        backButton = Button(text = 'Back', size_hint=(1, None), height=50)
+        backButton = Button(text='Back', size_hint=(1, None), height=50)
+        backButton.bind(on_press=self.go_back)
         self.layout.add_widget(backButton)
-        backButton.bind (on_press = self.go_back)
-    
+        self.add_widget(self.layout)
+
     def go_back(self, instance):
-        """Switch back to the Dashboard screen."""
+    #Switch back to the dashboard screen
         self.manager.current = "dashboard"
 
     def on_pre_enter(self, *args):
@@ -197,9 +188,8 @@ class ProductsScreen(Screen):
             conn.commit()
         self.load_products()
 
-# The Form for the products (Name, Description, Price per unit)
 class ProductFormScreen(Screen):
-    """Screen for adding or editing a product."""
+    #Screen for adding & editing a products
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.product_id = None
@@ -213,10 +203,18 @@ class ProductFormScreen(Screen):
         layout.add_widget(Label(text='Price'))
         self.price_input = TextInput()
         layout.add_widget(self.price_input)
+        button_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
         save_button = Button(text='Save')
         save_button.bind(on_press=self.save_product)
-        layout.add_widget(save_button)
+        button_layout.add_widget(save_button)
+        backButton = Button(text='Back')
+        backButton.bind(on_press=self.go_back)
+        button_layout.add_widget(backButton)
+        layout.add_widget(button_layout)
         self.add_widget(layout)
+
+    def go_back(self, instance):
+        self.manager.current = 'products'
 
     def on_pre_enter(self, *args):
         if self.product_id is not None:
@@ -255,15 +253,22 @@ class ProductFormScreen(Screen):
             print(f"Invalid input: {e}")
 
 class InventoryScreen(Screen):
-    """Screen to manage inventory (view stock, record transactions)."""
+#Screen to manage inventory view products, record transactions
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.layout = ScrollView()
+        self.main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.scrollview = ScrollView()
         self.grid = GridLayout(cols=1, spacing=10, size_hint_y=None)
         self.grid.bind(minimum_height=self.grid.setter('height'))
-        self.layout.add_widget(self.grid)
-        self.add_widget(self.layout)
-        
+        self.scrollview.add_widget(self.grid)
+        self.main_layout.add_widget(self.scrollview)
+        backButton = Button(text='Back', size_hint=(1, None), height=50)
+        backButton.bind(on_press=self.go_back)
+        self.main_layout.add_widget(backButton)
+        self.add_widget(self.main_layout)
+
+    def go_back(self, instance):
+        self.manager.current = 'dashboard'
 
     def on_pre_enter(self, *args):
         self.load_inventory()
@@ -320,19 +325,76 @@ class InventoryScreen(Screen):
             self.load_inventory()
 
         except ValueError as e:
-            print(f"Invalid quantity: {e}")  # Display appropriate error message in the production page(Needs a pop-up)
+            print(f"Invalid quantity: {e}")  # Display appropriate error message in production
 
 class AnalyticsScreen(Screen):
-    """Screen to display analytics with graphs and availability."""
+#Screen to display analytics with graphs for most sold products and low on stock
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
-        self.layout.add_widget(Label(text='Analytics'))
-        self.bar_graph = BarGraph([('Product 1', 10), ('Product 2', 30), ('Product 3', 20)])
-        self.layout.add_widget(self.bar_graph)
+        self.layout.add_widget(Label(text='Analytics', font_size=24))
+
+        # Most Sold Products Section
+        self.most_sold_label = Label(text='Most Sold Products', size_hint_y=None, height=30)
+        self.layout.add_widget(self.most_sold_label)
+        self.most_sold_graph = BarGraph([])
+        self.layout.add_widget(self.most_sold_graph)
+
+        # Low Stock Products Section
+        self.low_stock_label = Label(text='Low Stock Products (≤ 5 units)', size_hint_y=None, height=30)
+        self.layout.add_widget(self.low_stock_label)
+        self.low_stock_scroll = ScrollView(size_hint=(1, 0.3))
+        self.low_stock_grid = GridLayout(cols=1, spacing=10, size_hint_y=None)
+        self.low_stock_grid.bind(minimum_height=self.low_stock_grid.setter('height'))
+        self.low_stock_scroll.add_widget(self.low_stock_grid)
+        self.layout.add_widget(self.low_stock_scroll)
+
+        # Back Button
+        backButton = Button(text='Back', size_hint=(1, None), height=50)
+        backButton.bind(on_press=self.go_back)
+        self.layout.add_widget(backButton)
         self.add_widget(self.layout)
 
-# App and ScreenManager Setup - Not finished
+    def on_pre_enter(self, *args):
+        self.load_analytics()
+
+    def load_analytics(self):
+        # Load Most Sold Products
+        with get_db_connection() as conn:
+            most_sold = conn.execute('''
+                SELECT p.name, SUM(t.quantity) as total_sold
+                FROM transactions t
+                JOIN products p ON t.product_id = p.id
+                WHERE t.type = 'sale'
+                GROUP BY t.product_id
+                ORDER BY total_sold DESC
+                LIMIT 5
+            ''').fetchall()
+        most_sold_data = [(row['name'], row['total_sold']) for row in most_sold]
+        self.most_sold_graph.data = most_sold_data
+        self.most_sold_graph.update_graph()
+
+        # Load Low Stock Products
+        self.low_stock_grid.clear_widgets()
+        with get_db_connection() as conn:
+            low_stock = conn.execute('''
+                SELECT p.name, i.quantity
+                FROM inventory i
+                JOIN products p ON i.product_id = p.id
+                WHERE i.quantity <= 5
+                ORDER BY i.quantity ASC
+            ''').fetchall()
+        if not low_stock:
+            self.low_stock_grid.add_widget(Label(text='No products with low stock', size_hint_y=None, height=30))
+        else:
+            for item in low_stock:
+                label = Label(text=f"{item['name']}: {item['quantity']} units", size_hint_y=None, height=30)
+                self.low_stock_grid.add_widget(label)
+
+    def go_back(self, instance):
+        self.manager.current = 'dashboard'
+
+# App and ScreenManager Setup
 class MyApp(App):
     def build(self):
         init_db()
